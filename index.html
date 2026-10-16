@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J.A.R.V.I.S.</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#02080d">
+<style>
+:root{--bg:#02080d;--cy:#35e0ff;--cy2:#0a8fb0;--dim:#6fb8c9;--gold:#ffb43a}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:radial-gradient(ellipse at 50% 30%,#06222d 0%,var(--bg) 65%);color:var(--cy);font-family:"Segoe UI","Helvetica Neue",sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+header{text-align:center;padding:14px 0 0;letter-spacing:.5em;font-weight:200;font-size:15px;text-shadow:0 0 12px var(--cy)}
+#status{text-align:center;font-size:12px;color:var(--dim);letter-spacing:.2em;height:18px}
+#core{flex:0 0 auto;display:flex;justify-content:center;padding:6px 0}
+svg{width:min(52vw,38vh,280px);height:auto;filter:drop-shadow(0 0 14px rgba(53,224,255,.55))}
+.r1{animation:spin 24s linear infinite;transform-origin:150px 150px}
+.r2{animation:spin 14s linear infinite reverse;transform-origin:150px 150px}
+.r3{animation:spin 40s linear infinite;transform-origin:150px 150px}
+.core{animation:pulse 3s ease-in-out infinite;transform-origin:150px 150px}
+body.listening .core{animation-duration:.8s}body.listening svg{--c:var(--gold)}
+body.speaking .core{animation-duration:.5s}
+body.listening .core circle{fill:var(--gold)}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.55;transform:scale(1.08)}}
+#log{flex:1;overflow-y:auto;padding:8px 2px;display:flex;flex-direction:column;gap:10px;max-width:760px;width:100%;margin:0 auto;scrollbar-width:none}
+.m{max-width:85%;padding:9px 13px;font-size:15px;line-height:1.45;border:1px solid rgba(53,224,255,.35);background:rgba(10,143,176,.1);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.m.u{align-self:flex-end;color:#d7f6ff;border-color:rgba(255,180,58,.5);background:rgba(255,180,58,.07)}
+.m.j{align-self:flex-start}
+.m.err{color:#ff7a7a;border-color:#ff7a7a}
+form{display:flex;gap:8px;max-width:760px;width:100%;margin:0 auto;padding:10px 0 14px}
+input{flex:1;min-width:0;background:rgba(2,20,28,.8);border:1px solid var(--cy2);color:#d7f6ff;padding:12px 14px;font-size:16px;outline:none}
+input:focus-visible,button:focus-visible{outline:2px solid var(--cy);outline-offset:2px}
+button{background:rgba(10,143,176,.2);border:1px solid var(--cy);color:var(--cy);padding:0 16px;font-size:15px;cursor:pointer;min-width:48px}
+button:active{background:rgba(53,224,255,.3)}
+#mic.on{border-color:var(--gold);color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.r1,.r2,.r3,.core{animation:none}}
+</style>
+</head>
+<body>
+<header>J.A.R.V.I.S.</header>
+<div id="status">BEREIT</div>
+<div id="core">
+<svg viewBox="0 0 300 300" fill="none" stroke="#35e0ff">
+  <g class="r3"><circle cx="150" cy="150" r="140" stroke-width="1.5" stroke-dasharray="3 9"/></g>
+  <g class="r1"><circle cx="150" cy="150" r="118" stroke-width="5" stroke-dasharray="60 22" opacity=".8"/></g>
+  <g class="r2"><circle cx="150" cy="150" r="92" stroke-width="2" stroke-dasharray="18 10"/>
+    <g stroke-width="7"><path d="M150 52v22M150 226v22M52 150h22M226 150h22M81 81l16 16M203 203l16 16M219 81l-16 16M97 203l-16 16"/></g></g>
+  <circle cx="150" cy="150" r="62" stroke-width="2"/>
+  <g class="core"><circle cx="150" cy="150" r="34" fill="#35e0ff" stroke="none" opacity=".9"/><circle cx="150" cy="150" r="46" stroke-width="3"/></g>
+</svg>
+</div>
+<div id="log"></div>
+<form id="f">
+  <button type="button" id="mic" aria-label="Sprechen">🎤</button>
+  <input id="t" placeholder="Befehl eingeben…" autocomplete="off">
+  <button type="submit">Senden</button>
+</form>
+<script>
+const log=document.getElementById("log"),t=document.getElementById("t"),st=document.getElementById("status"),mic=document.getElementById("mic");
+let history=[];
+const setState=(c,txt)=>{document.body.className=c;st.textContent=txt};
+function add(text,cls){const d=document.createElement("div");d.className="m "+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight}
+function pass(){let p=localStorage.getItem("jp");if(!p){p=prompt("Zugangscode:")||"";localStorage.setItem("jp",p)}return p}
+
+function speak(text){
+  if(!("speechSynthesis" in window))return setState("","BEREIT");
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang="de-DE";u.rate=1.02;u.pitch=.85;
+  const v=speechSynthesis.getVoices().filter(v=>v.lang.startsWith("de")).find(v=>/male|Markus|Daniel|Stefan|Conrad|Yannick/i.test(v.name))||speechSynthesis.getVoices().find(v=>v.lang.startsWith("de"));
+  if(v)u.voice=v;
+  u.onstart=()=>setState("speaking","SPRECHE");
+  u.onend=u.onerror=()=>setState("","BEREIT");
+  speechSynthesis.speak(u);
+}
+
+async function send(text){
+  text=text.trim();if(!text)return;
+  add(text,"u");history.push({role:"user",content:text});t.value="";
+  setState("","DENKE NACH…");
+  try{
+    const r=await fetch("/api/chat",{method:"POST",headers:{"content-type":"application/json","x-pass":pass()},body:JSON.stringify({messages:history})});
+    const d=await r.json();
+    if(r.status===401){localStorage.removeItem("jp")}
+    if(!r.ok)throw new Error(d.error||"Fehler");
+    history.push({role:"assistant",content:d.reply});add(d.reply,"j");speak(d.reply);
+  }catch(e){history.pop();add(e.message,"m err");setState("","FEHLER")}
+}
+document.getElementById("f").onsubmit=e=>{e.preventDefault();send(t.value)};
+
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SR){mic.style.display="none"}else{
+  const rec=new SR();rec.lang="de-DE";rec.interimResults=false;
+  rec.onstart=()=>{mic.classList.add("on");setState("listening","HÖRE ZU…")};
+  rec.onend=()=>{mic.classList.remove("on");if(document.body.className==="listening")setState("","BEREIT")};
+  rec.onresult=e=>send(e.results[0][0].transcript);
+  rec.onerror=()=>setState("","MIKROFON NICHT VERFÜGBAR");
+  mic.onclick=()=>{speechSynthesis.cancel();try{rec.start()}catch(_){rec.stop()}};
+}
+add("Guten Tag, Sir. Alle Systeme sind einsatzbereit. Wie kann ich helfen?","j");
+speechSynthesis.getVoices();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
