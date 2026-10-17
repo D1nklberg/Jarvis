@@ -63,6 +63,8 @@ button:active{background:rgba(53,224,255,.3)}
 <script>
 const log=document.getElementById("log"),t=document.getElementById("t"),st=document.getElementById("status"),mic=document.getElementById("mic");
 let history=[];
+const unlock=()=>{if("speechSynthesis" in window){const u=new SpeechSynthesisUtterance(" ");u.volume=0;speechSynthesis.speak(u)}};
+["click","touchend","keydown"].forEach(e=>document.addEventListener(e,unlock,{once:true}));
 const setState=(c,txt)=>{document.body.className=c;st.textContent=txt};
 function add(text,cls){const d=document.createElement("div");d.className="m "+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight}
 function pass(){let p=localStorage.getItem("jp");if(!p){p=prompt("Zugangscode:")||"";localStorage.setItem("jp",p)}return p}
@@ -103,6 +105,7 @@ if(!SR){mic.style.display="none"}else{
 }
 add("Guten Tag, Sir. Alle Systeme sind einsatzbereit. Wie kann ich helfen?","j");
 speechSynthesis.getVoices();
+if("speechSynthesis" in window)speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
 </body>
